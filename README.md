@@ -1,5 +1,4 @@
-# StudyRoom (What I studied Today)
-😁📝 ✏️🔔👍😁
+# StudyRoom (What I studied Today) 😁📝 ✏️🔔👍😁
 
 ## 규칙
 1. 1일 1커밋(since 2023.02.18)
