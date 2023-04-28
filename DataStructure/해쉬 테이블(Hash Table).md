@@ -8,11 +8,11 @@
 * 기본 연산으로는 탐색(Search), 삽입(Insert), 삭제(Delete)가 있다.
 * hash value를 통해서 value를 얻을 수 있다. → **이진탐색트리나 배열에 비해서 속도가 획기적으로 빠름**
 
-![images_edie_ko_post_733c9c0f-afc9-4557-acf5-972bd1895993_hashtable](https://user-images.githubusercontent.com/39439576/235105480-ebeaa118-5523-401b-b173-df7f93e939ba.jpeg)
+![image](https://user-images.githubusercontent.com/39439576/235243425-05f98d58-f8ea-44bf-994f-662f203de7db.png)
 
-* (Key, Value)가 ("John Smith", "521-1234")인 데이터를 크기가 16인 해시 테이블에 저장하는 과정을 살펴보자.
-* Key값인 John Smith를 `해시함수`에 입력하고 `출력값(hash value)`을 받는다.
-* 이 hash value를 index 삼아 Value값인 521-1234을 `buckets`에 저장한다.
+* (Key, Value)가 ("Lisa Smith", "555-8976")인 데이터를 크기가 1000인 해시 테이블에 저장하는 과정을 살펴보자.
+* Key값인 Lisa Smith를 해시함수에 입력하고 출력값(hash value)을 받는다.
+* 이 hash value를 index 삼아 Key, Value쌍인  ("Lisa Smith", "555-8976")을 buckets에 저장한다.
 * 이러한 구조로 데이터를 저장하면 Key값으로 데이터를 찾을 때 해시 함수를 1번만 수행하면 되므로 매우 빠르게 데이터를 저장/삭제/조회할 수 있다.
 
 # 💡 해시 함수
@@ -22,8 +22,8 @@
 * 이것을 `'해시 충돌 hash collision'`이라고 표현하며, 충돌이 적은 해시 함수가 좋은 해시함수다.
 
 # 💡 해시 충돌
-![qwe](https://user-images.githubusercontent.com/39439576/235112267-7d54c661-dad8-4016-b29e-8b7eec4493c1.png)
-* 위 그림에서 ARGOS와 MINIBEEF가 같은 해시 값을 가지며 충돌이 발생했다.
+![image](https://user-images.githubusercontent.com/39439576/235245589-42052397-f301-4f08-b80c-a6bb68b378a3.png)
+* 위 그림에서 John과 Tim이 같은 해시 값을 가지며 충돌이 발생했다.
 * 해시 충돌을 설명하기 위해서는 `적재율(load factor)`이라는 개념이 필요하다.
 * 적재율이란 해시 테이블의 크기 대비 키의 개수를 말한다.
 * 즉, 키의 개수를 K, 해시 테이블의 크기를 N이라고 했을 때 적재율은 K/N이다.
@@ -39,6 +39,36 @@
 
 ![qwe (1)](https://user-images.githubusercontent.com/39439576/235113828-adf71f90-f6e6-45ba-8d02-bcff9ee6d9fe.png)
 
-## 개방 주소법 Open Addressing
+## 1. 개방 주소법 Open Addressing
 * 해시함수로 얻은 해시값(index)에 다른 데이터가 있을 경우 다른 주소도 이용할 수 있게 하는 기법이다.
 * 한 버킷 당 들어갈 수 있는 엔트리는 하나이지만 해시 함수로 얻은 주소가 아닌, 다른 주소에 데이터를 저장할 수 있도록 허용하는 방법이다.
+* 이 방법은 부하율(load factor)이 높을 수록(= 테이블에 저장된 데이터의 밀도가 높을수록) 성능이 급격히 저하된다.
+* 개방 주소법의 주요 목적은 저장할 엔트리를 위한 다음의 slot을 찾는 것인데, 대표적인 3가지 기법을 살펴보자.
+
+### (1) 선형 탐사법 Linear Probing
+* 말 그대로 가장 간단하게 선형으로 순차적 검색을 하는 방법이다.
+* 해시 함수로 나온 해시 index에 이미 다른 값이 저장되어 있다면, 해당 해시값에서 `고정 폭`을 옮겨 다음 해시값에 해당하는 버킷에 액세스한다.
+* 여기에 또 다른 데이터가 있다면 또 다시 고정폭으로 이동해 액세스한다.
+* 선형탐사는 바로 인접한 인덱스에 데이터를 삽입해가기 때문에 데이터가 밀집되는 클러스터링(Clustering) 문제가 발생하고 이로 인해 탐색과 삭제가 느려지게 된다.
+
+![image](https://user-images.githubusercontent.com/39439576/235239820-c85d9523-59ff-4dfe-a5c4-14be7d5a1964.png)
+
+### (2) 제곱 탐사법 Quadratic Probing
+* 1^2 ,2^2 ,3^2.. 으로 탐사를 하는 방식으로 선형탐사에 비해 더 폭넓게 탐사하기 때문에 탐색과 삭제에 효율적일 수 있다.
+* 데이터의 밀집도가 선형 탐사법보다 낮기 때문에 연쇄적으로 충돌이 발생할 가능성이 적다.
+
+![image](https://user-images.githubusercontent.com/39439576/235240561-834ccf30-7b45-4891-b56f-38b2c0ab1eb9.png)
+
+### (3) 이중 해싱 Double Hashing
+* 이중해싱은 선형탐사와 제곱탐사에서 발생하는 클러스터링 문제를 모두 피하기 위해 도입된 것이다.
+* 이 방법은 해시 충돌이 발생했을 때 해싱을 한번 더 수행한다.
+* 처음 해시함수는 해시값을 찾기 위해 사용하고 두번째 해시함수는 충돌이 발생했을 때 탐사폭을 계산하기 위해 사용한다.
+
+## 2. 분리 연결법 Seperate Chaining
+* 분리 연결법은 개방 주소법과는 달리 한 버킷(슬롯) 당 들어갈 수 있는 엔트리의 수에 제한을 두지 않는다.
+* 이때 버킷에는 링크드 리스트(linked list)나 트리(tree)를 사용한다.
+* 해시 충돌이 일어나더라도 linked list로 노드가 연결되기 때문에 index가 변하지 않고 데이터 개수의 제약이 없다는 장점이 있다.
+* 하지만, 데이터의 수가 많아지면 동일한 버킷에 chaining되는 데이터가 많아지고 그에 따라 캐시의 효율성이 감소한다는 단점이 있다.
+
+![image](https://user-images.githubusercontent.com/39439576/235245443-03b36daf-d4bb-4a62-8bf9-6bb4cd6393cf.png)
+
