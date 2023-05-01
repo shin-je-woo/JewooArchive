@@ -1,0 +1,135 @@
+# 💡 주문 조회 V4: JPA에서 DTO직접 조회
+```java
+@GetMapping("/api/v4/orders")
+public List<OrderQueryDto> ordersV4() {
+    return orderQueryRepository.findOrderQueryDtos();
+}
+```
+```java
+@Repository
+@RequiredArgsConstructor
+public class OrderQueryRepository {
+
+    private final EntityManager em;
+
+    public List<OrderQueryDto> findOrderQueryDtos() {
+        //루트 조회(toOne 코드를 모두 한번에 조회)
+        List<OrderQueryDto> result = findOrders(); // query 1번 -> N개
+        
+        //루프를 돌면서 컬렉션 추가(추가 쿼리 실행)
+        result.forEach(o -> {
+            List<OrderItemQueryDto> orderItems = findOrderItems(o.getOrderId()); // Query N번
+            o.setOrderItems(orderItems);
+        });
+        return result;
+    }
+    
+    /**
+     * 1:N 관계(컬렉션)를 제외한 나머지를 한번에 조회
+     */
+    private List<OrderQueryDto> findOrders() {
+        return em.createQuery(
+                "select new jpabook.jpashop.repository.order.query.OrderQueryDto(o.id, m.name, o.orderDate, o.status, d.address ) from Order o" +
+                        " join o.member m" +
+                        " join o.delivery d", OrderQueryDto.class
+        ).getResultList();
+    }
+
+    /**
+     * 1:N 관계인 orderItems 조회
+     */
+    private List<OrderItemQueryDto> findOrderItems(Long orderId) {
+        return em.createQuery(
+                "select new jpabook.jpashop.repository.order.query.OrderItemQueryDto(oi.order.id, i.name, oi.orderPrice, oi.count)" +
+                        " from OrderItem oi" +
+                        " join oi.item i" +
+                        " where oi.order.id = :orderId", OrderItemQueryDto.class)
+                .setParameter("orderId", orderId)
+                .getResultList();
+    }
+    
+}
+```
+* Query: 루트 1번, 컬렉션 N 번 실행
+* ToOne(N:1, 1:1) 관계들을 먼저 조회하고, ToMany(1:N) 관계는 각각 별도로 처리한다.
+* 이런 방식을 선택한 이유는 다음과 같다.
+  * ToOne 관계는 조인해도 데이터 row 수가 증가하지 않는다.
+  * ToMany(1:N) 관계는 조인하면 row 수가 증가한다.
+  * row 수가 증가하지 않는 ToOne 관계는 조인으로 최적화 하기 쉬우므로 한번에 조회하고, ToMany 관계는 최적화 하기 어려우므로 findOrderItems() 같은 별도의 메서드로 조회한다.
+
+# 💡 주문 조회 V5: JPA에서 DTO직접 조회 - 컬렉션 조회 최적화
+```java
+@GetMapping("/api/v5/orders")
+public List<OrderQueryDto> ordersV5() {
+    return orderQueryRepository.findAllByDto_optimization();
+}
+```
+```java
+public List<OrderQueryDto> findAllByDto_optimization() {
+
+    //루트 조회(toOne 코드를 모두 한번에 조회)
+    List<OrderQueryDto> result = findOrders();
+    
+    //orderItem 컬렉션을 MAP 한방에 조회
+    Map<Long, List<OrderItemQueryDto>> orderItemMap = findOrderItemMap(toOrderIds(result));
+    
+    //루프를 돌면서 컬렉션 추가(추가 쿼리 실행X)
+    result.forEach(o -> o.setOrderItems(orderItemMap.get(o.getOrderId())));
+
+    return result;
+}
+
+private Map<Long, List<OrderItemQueryDto>> findOrderItemMap(List<Long> orderIds) {
+    List<OrderItemQueryDto> orderItems = em.createQuery(
+            "select new jpabook.jpashop.repository.order.query.OrderItemQueryDto(oi.order.id, i.name, oi.orderPrice, oi.count)" +
+                    " from OrderItem oi" +
+                    " join oi.item i" +
+                    " where oi.order.id in :orderIds", OrderItemQueryDto.class)
+            .setParameter("orderIds", orderIds)
+            .getResultList();
+
+    return orderItems.stream()
+            .collect(Collectors.groupingBy(OrderItemQueryDto::getOrderId));
+}
+
+private List<Long> toOrderIds(List<OrderQueryDto> result) {
+    return result.stream()
+                .map(OrderQueryDto::getOrderId)
+                .collect(Collectors.toList());
+}
+```
+* Query: 루트 1번, 컬렉션 1번
+* ToOne 관계들을 먼저 조회하고, 여기서 얻은 식별자 orderId로 ToMany 관계인 OrderItem 을 한꺼번에 조회
+* MAP을 사용해서 매칭 성능 향상(O(1))
+
+# 💡 API 개발 고급 정리
+### 엔티티 조회
+* 엔티티를 조회해서 그대로 반환: V1
+* 엔티티 조회 후 DTO로 변환: V2
+* 페치 조인으로 쿼리 수 최적화 V3
+* 컬렉션 페이징과 한계 돌파: V3.1
+* 컬렉션은 페치 조인시 페이징이 불가능
+* ToOne 관계는 페치 조인으로 쿼리 수 최적화
+* 컬렉션은 페치 조인 대신에 지연 로딩을 유지하고 `hibernate.default_batch_fetch_size`, `@BatchSize` 로 최적화
+
+### DTO 직접 조회
+* JPA에서 DTO를 직접 조회: V4
+* 컬렉션 조회 최적화 - 일대다 관계인 컬렉션은 IN절을 활용해서 메모리에 미리 조회해서 최적화: V5
+
+### 권장 순서
+1. 엔티티 조회 방식으로 우선 접근
+  1. 페치조인으로 쿼리 수를 최적화
+  2. 컬렉션 최적화
+    1. 페이징 필요 hibernate.default_batch_fetch_size , @BatchSize 로 최적화
+    2. 페이징 필요 X → 페치 조인 사용
+2. 엔티티 조회 방식으로 해결이 안되면 DTO조회 방식 사용
+3. DTO조회 방식으로 해결이 안되면 NativeSQL or JdbcTemplate
+
+> 참고  
+> 엔티티 조회 방식은 페치 조인이나, hibernate.default_batch_fetch_size , @BatchSize 같이 코드를 거의 수정하지 않고, 옵션만 약간 변경해서, 다양한 성능 최적화를 시도할 수 있다.   
+> 반면에 DTO를 직접 조회하는 방식은 성능을 최적화 하거나 성능 최적화 방식을 변경할 때 많은 코드를 변경해야 한다.
+
+> 참고   
+> 개발자는 성능 최적화와 코드 복잡도 사이에서 줄타기를 해야 한다. 항상 그런 것은 아니지만 보통 성능 최적화는 단순한 코드를 복잡한 코드로 몰고간다.   
+> 엔티티 조회 방식은 JPA가 많은 부분을 최적화 해주기 때문에, 단순한 코드를 유지하면서 성능을 최적화 할 수 있다.   
+> 반면에 DTO 조회 방식은 SQL을 직접 다루는 것과 유사하기 때문에 둘 사이에 줄타기를 해야 한다.
