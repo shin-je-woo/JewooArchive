@@ -3,7 +3,7 @@
 * `HandlerExceptionResovler`를 살펴보다가 발견한 내용이 있어 기록한다.
 
 # 문제상황
-* 비즈니스 로직 오류처리를 위한 커스텀Exception을 하나 만들었다. (UncheckedException을 상속받는다.)
+* 비즈니스 로직 오류처리를 위한 커스텀Exception을 하나 만들었다.
 * 해당 오류가 발생하면 오류내용 발생원인과 예외메시지를 response body에 넣고, HttpStatus를 200으로 처리해줄 생각이었다.
 * 오류처리용 클래스에 `@RestControllerAdvice` 어노테이션을 달고, 오류처리용 메서드에 `@ExceptionHandler` 어노테이션을 달아주었다.
 * 다음은 작성했던 코드를 재구성한 코드이다. (사내코드여서 단순화한 코드를 예시로 들겠다.)
