@@ -74,5 +74,7 @@ public final class RequestMatcherDelegatingAuthorizationManager implements Autho
 - check()메서드를 보면 (1)번에서 현재 요청(request)과 필드로 등록된 `AuthorizationManager`의 `RequestMatcher`가 일치하는지 확인한다.
 - (2)번에서 일치하는 `AuthorizationManager`의 check()메서드를 호출하여 인증처리를 위임한다.
 
-📌 참고)
+📌 참고) RequestMatcher
+- `RequestMatcher`는 다음 이미지처럼 시큐리티 설정클래스에서 등록하게 된다.
 ![image](https://github.com/shin-je-woo/TIL/assets/39439576/123449ec-76ad-4290-b113-4603b9afd8ec)
+- `RequestMatcher`를 등록하는 다양한 방법은 [스프링 시큐리티-Authorize HttpServletRequests](https://docs.spring.io/spring-security/reference/servlet/authorization/authorize-http-requests.html)를 참고하자.
