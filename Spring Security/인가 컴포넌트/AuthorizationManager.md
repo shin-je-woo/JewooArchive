@@ -46,24 +46,14 @@ public final class RequestMatcherDelegatingAuthorizationManager implements Autho
 
     @Override
     public AuthorizationDecision check(Supplier<Authentication> authentication, HttpServletRequest request) {
-        if (this.logger.isTraceEnabled()) {
-            this.logger.trace(LogMessage.format("Authorizing %s", request));
-        }
         for (RequestMatcherEntry<AuthorizationManager<RequestAuthorizationContext>> mapping : this.mappings) {
-
             RequestMatcher matcher = mapping.getRequestMatcher();
             MatchResult matchResult = matcher.matcher(request); // (1)
             if (matchResult.isMatch()) {
                 AuthorizationManager<RequestAuthorizationContext> manager = mapping.getEntry();
-                if (this.logger.isTraceEnabled()) {
-                    this.logger.trace(LogMessage.format("Checking authorization on %s using %s", request, manager));
-                }
                 return manager.check(authentication,
                         new RequestAuthorizationContext(request, matchResult.getVariables())); // (2)
             }
-        }
-        if (this.logger.isTraceEnabled()) {
-            this.logger.trace(LogMessage.of(() -> "Denying request since did not find matching RequestMatcher"));
         }
         return DENY;
     }
