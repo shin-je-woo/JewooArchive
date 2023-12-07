@@ -7,6 +7,8 @@ public abstract class AbstractAuthenticationProcessingFilter extends GenericFilt
 
     private AuthenticationManager authenticationManager;
 
+    private RememberMeServices rememberMeServices = new NullRememberMeServices();
+
     private RequestMatcher requiresAuthenticationRequestMatcher;
 
     private SessionAuthenticationStrategy sessionStrategy = new NullAuthenticatedSessionStrategy();
