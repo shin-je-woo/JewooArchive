@@ -107,3 +107,40 @@ docker run -it ubuntu:22.04
 ```
 docker stop 컨테이너 이름(또는 컨테이너ID)
 ```
+
+### 7. stats (컨테이너 상태 확인)
+```
+docker stats
+```
+![image](https://github.com/shin-je-woo/TIL/assets/39439576/2d646497-4ff3-4cc5-bd9d-f0209e7939a3)
+
+### 8. exec (실행중인 컨테이너에 명령 전달하기)
+```
+docker exec 옵션 컨테이너ID 명령인자
+```
+```
+docker exec -it myubuntu /bin/bash
+```
+- 위와 같이 exec 명령을 수행하면 /bin/bash 쉘 프로그램을 실행하면서 터미널로 연결하므로 컨테이너에 들어갈 수 있음
+
+### 9. attach (실행중인 컨테이너에 연결하기)
+```
+docker attach 컨테이너ID
+```
+```
+docker attach myubuntu
+```
+- 위와 같이 입력하면 실행한 컨테이너에 연결할 수 있음
+
+> 참고  
+> exec명령은 컨테이너에 신규 명령을 내리는 것이고, attach는 컨테이너에 연결하는 명령임
+
+### 10. 모든 컨테이너 삭제하기
+```
+# 모든 컨테이너 중지 이후 삭제
+docker stop $(docker ps -a -q)
+docker rm $(docker ps -a -q)
+
+# 모든 이미지 삭제
+docker rmi -f $(docker images -q)
+```
