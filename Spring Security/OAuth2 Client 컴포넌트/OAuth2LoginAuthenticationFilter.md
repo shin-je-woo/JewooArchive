@@ -138,7 +138,7 @@ public Authentication authenticate(Authentication authentication) throws Authent
 }
 ```
 
-▶️ 
+▶️ DefaultAuthorizationCodeTokenResponseClient - 토큰 받아오기
 ```java
 @Override
 public OAuth2AccessTokenResponse getTokenResponse(
@@ -154,3 +154,10 @@ public OAuth2AccessTokenResponse getTokenResponse(
     return tokenResponse;
 }
 ```
+
+# 💡 OAuth2 로그인 정리
+1. `/oauth2/authorization/{registrationId}` 로 요청이 오면 `OAuth2AuthorizationRedirectFilter`가 로그인 창으로 리다이렉션 시킨다.
+2. 로그인 후 Authorization Server에 등록해 둔 redirect_uri로 인가 코드(code)를 전달 받는다.
+3. redirect_uri 즉 `/login/oauth2/code/{registrationId}` 를 `OAuth2LoginAuthenticationFilter` 에서 처리해서 token을 얻어옴
+4. 얻어온 token을 가지고 DefaultOAuth2UserService.loadUser()에서 유저 정보를 받아온다. (이 부분은 보통 커스텀하여 로그인 or 회원가입 처리)
+5. 유저 정보를 바탕으로 회원가입 및 로그인 처리 시도
