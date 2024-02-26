@@ -97,7 +97,7 @@ class StudyServiceTest {
 
 # 💡 Stubbing (Mock 객체 행위 정의하기)
 - Stubbing이란 Mock 객체를 조작하는 것을 의미한다.
-  - 모든 Mock 객체의 기본 행동 (조작하지 않는 경우)
+- 참고) 모든 Mock 객체의 기본 행동 (조작하지 않는 경우)
   - `return`값이 있는 메서드는 `Null`을 리턴한다.
   - `Optional`의 경우는 `Optional.empty`을 리턴한다.
   - 상태로 `Primitive` 타입을 가지고 있다면 기본값을 가진다. (int는 0, boolean이면 false...)
@@ -145,3 +145,75 @@ assertEquals(memberService.findById(1L).getEmail(), "shinjw0926@naver.com");
 assertThrows(RuntimeException.class, () -> memberService.findById(1L));
 assertNull(memberService.findById(1L));
 ```
+
+# 💡 Mock 객체 검증
+- 특정 메서드가 특정 매개변수로 몇번 호출 되었는지, 최소 한번은 호출 됐는지, 전혀 호출되지 않았는지 검증
+  - [Verifying exact number of invocations](https://javadoc.io/doc/org.mockito/mockito-core/latest/org/mockito/Mockito.html#exact_verification)
+
+```java
+//using mock
+mockedList.add("once");
+
+mockedList.add("twice");
+mockedList.add("twice");
+
+mockedList.add("three times");
+mockedList.add("three times");
+mockedList.add("three times");
+
+//following two verifications work exactly the same - times(1) is used by default
+verify(mockedList).add("once");
+verify(mockedList, times(1)).add("once");
+
+//exact number of invocations verification
+verify(mockedList, times(2)).add("twice");
+verify(mockedList, times(3)).add("three times");
+
+//verification using never(). never() is an alias to times(0)
+verify(mockedList, never()).add("never happened");
+
+//verification using atLeast()/atMost()
+verify(mockedList, atMostOnce()).add("once");
+verify(mockedList, atLeastOnce()).add("three times");
+verify(mockedList, atLeast(2)).add("three times");
+verify(mockedList, atMost(5)).add("three times");
+```
+
+- 어떤 순서로 호출됐는지 검증
+  - [Verification in order](https://javadoc.io/doc/org.mockito/mockito-core/latest/org/mockito/Mockito.html#in_order_verification)
+ 
+```java
+// A. Single mock whose methods must be invoked in a particular order
+List singleMock = mock(List.class);
+
+//using a single mock
+singleMock.add("was added first");
+singleMock.add("was added second");
+
+//create an inOrder verifier for a single mock
+InOrder inOrder = inOrder(singleMock);
+
+//following will make sure that add is first called with "was added first", then with "was added second"
+inOrder.verify(singleMock).add("was added first");
+inOrder.verify(singleMock).add("was added second");
+
+// B. Multiple mocks that must be used in a particular order
+List firstMock = mock(List.class);
+List secondMock = mock(List.class);
+
+//using mocks
+firstMock.add("was called first");
+secondMock.add("was called second");
+
+//create inOrder object passing any mocks that need to be verified in order
+InOrder inOrder = inOrder(firstMock, secondMock);
+
+//following will make sure that firstMock was called before secondMock
+inOrder.verify(firstMock).add("was called first");
+inOrder.verify(secondMock).add("was called second");
+
+// Oh, and A + B can be mixed together at will
+```
+
+- 등등 다양한 Stubbing, 검증 API가 있으니 아래를 확인하자.
+  - [Mockito 자바독](https://javadoc.io/doc/org.mockito/mockito-core/latest/org/mockito/Mockito.html)
