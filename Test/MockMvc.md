@@ -30,3 +30,6 @@
   - DispatcherServlet에 요청을 의뢰하는 역할을 한다.
   - `RequestBuilder` 인터페이스를 인수로 전달한다.
   - `ResultActions` 이라는 인터페이스를 반환한다.
+
+### ResultActions - andExpect() 메소드
+- [JavaDoc - ResultActions](https://docs.spring.io/spring-framework/docs/current/javadoc-api/org/springframework/test/web/servlet/ResultActions.html)
