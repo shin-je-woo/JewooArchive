@@ -5,7 +5,7 @@
   - Collections.synchronizedXXX
 - 이 클래스 모두 public으로 선언된 메소드에 `synchronized` 키워드를 사용하여 내부의 값을 한 스레드만 사용할 수 있도록 제어하면서 동시성을 보장하고 있다.
 
-### Vector
+### 🟩 Vector
 ```java
 public class Vector<E> extends AbstractList<E>
     implements List<E>, RandomAccess, Cloneable, java.io.Serializable {
@@ -21,7 +21,7 @@ public class Vector<E> extends AbstractList<E>
 - Vector 클래스에서 요소를 추가하는 add() 메소드를 살펴 보면 `synchronized` 키워드가 보인다.
 - 즉, 내부적으로 Vector에서 요소 삽입 연산이 진행될 때 동기화가 보장된다.
 
-### Hashtable
+### 🟩 Hashtable
 ```java
 ublic class Hashtable<K,V> extends Dictionary<K,V>
     implements Map<K,V>, Cloneable, java.io.Serializable {
@@ -46,7 +46,7 @@ ublic class Hashtable<K,V> extends Dictionary<K,V>
 ```
 - Hashtable 클래스에서 동일한 value가 존재하는지 확인하는 contains() 메소드를 살펴보면 Vector 클래스와 동일하게 `synchronized` 키워드가 사용된 것을 확인할 수 있다.
 
-### Collections.synchronizedXXX
+### 🟩 Collections.synchronizedXXX
 - Collections.synchronizedList() 메소드를 사용해 생성되는 SynchronizedList 클래스를 살펴 보자.
 
 ```java
@@ -128,7 +128,7 @@ synchronized (list) {
 # 💡 Concurrent Collection
 - java.util.concurrent 패키지에서 제공하는 병렬 컬렉션의 종류는 많지만, 주요한 클래스만 다룬다.
 
-### CopyOnWriteArrayList
+### 🟩 CopyOnWriteArrayList
 - 동기화된 ArrayList를 생성하는 방법은 아래 두 가지가 있다.
   - Collections.synchronizedList()
   - CopyOnWriteArrayList
@@ -190,7 +190,7 @@ public class CopyOnWriteArrayList<E> implements List<E>, RandomAccess, Cloneable
 - CopyOnWriteArrayList에서 iterator를 뽑아내는 시점의 컬렉션 데이터를 기준으로 반복한다.
 - 반복하는 동안 컬렉션에 데이터가 추가되거나 삭제되는 내용은 반복문과 상관 없는 복사본을 대상으로 반영하기 때문에 동시 사용성에 문제가 없다.
 
-### CopyOnWriteArraySet
+### 🟩 CopyOnWriteArraySet
 - 동기화된 Set을 생성하는 방법은 아래 두 가지가 있다.
   - Collections.synchronizedSet()
   - CopyOnWriteArraySet
@@ -245,3 +245,158 @@ public class CopyOnWriteArraySet<E> extends AbstractSet<E> implements java.io.Se
     }
 }
 ```
+- add() 메소드도 CopyOnWriteArrayList의 메소드를 차용한다
+
+```java
+public boolean addIfAbsent(E e) {
+    Object[] snapshot = getArray();
+    return indexOfRange(e, snapshot, 0, snapshot.length) < 0
+        && addIfAbsent(e, snapshot);
+}
+
+private boolean addIfAbsent(E e, Object[] snapshot) {
+        synchronized (lock) {
+            Object[] current = getArray();
+            int len = current.length;
+            if (snapshot != current) {
+                // Optimize for lost race to another addXXX operation
+                int common = Math.min(snapshot.length, len);
+                for (int i = 0; i < common; i++)
+                    if (current[i] != snapshot[i]
+                        && Objects.equals(e, current[i]))
+                        return false;
+                if (indexOfRange(e, current, common, len) >= 0)
+                        return false;
+            }
+            Object[] newElements = Arrays.copyOf(current, len + 1);
+            newElements[len] = e;
+            setArray(newElements);
+            return true;
+        }
+  }
+```
+- addIfAbsent() 메소드를 살펴 보면, 쓰기 동작 시 잠금을 걸고 배열 복사를 수행한다.
+- 따라서 CopyOnWriteArraySet도 CopyOnWriteArrayList과 마찬가지로 쓰기 작업은 많이 하지 않는 것이 좋다.
+
+### 🟩 ConcurrentHashMap
+- 동기화된 HashMap를 생성하는 방법은 아래 두 가지가 있다.
+  - Collections.synchronizedMap(new HashMap<>())
+  - ConcurrentHashMap
+- ConcurrentHashMap은 HashMap과 동일하게 Hash를 기반으로 하는 Map이다.
+- synchronizedMap에 비해 더욱 효율적인 방법으로 동시성을 보장한다.
+- 자바 8 이전에는 ReentrantLock을 상속 받는 Segment를 이용해, 영역을 구분함으로써 영역 별로 잠금을 하는 방식이었다.
+- 자바 8 이후부터는 각 테이블 버킷을 독립적으로 잠그는 방식을 사용한다.
+- 빈 버킷에 노드를 삽입할 경우에는 잠금 대신 CAS 알고리즘을 사용하고, 그 외의 변경은 각 버킷의 첫 번째 노드를 기준으로 부분적인 잠금(synchronized block)을 획득하여 스레드 경합을 최소화하며 동시성을 보장한다.
+- ConcurrentHashMap에 새로운 노드를 삽입하는 putVal() 메소드의 코드를 보며, 동시성을 어떻게 보장하는지 확인해 보자. 참고로 다음 예제 코드는 자바 11 기준이다.
+- putVal() 메소드는 크게 아래와 같이 두 가지 경우(분기는 총 네 부분)로 나눌 수 있다.
+  - 빈 해시 버킷에 노드를 삽입하는 경우
+  - 해시 버킷에 이미 노드가 존재하는 경우
+ 
+```java
+final V putVal(K key, V value, boolean onlyIfAbsent) {
+        if (key == null || value == null) throw new NullPointerException();
+        int hash = spread(key.hashCode());
+        int binCount = 0;
+        for (Node<K,V>[] tab = table;;) {
+            Node<K,V> f; int n, i, fh; K fk; V fv;
+            if (tab == null || (n = tab.length) == 0)
+                tab = initTable();
+                        // (1)
+            else if ((f = tabAt(tab, i = (n - 1) & hash)) == null) {
+                                // (2)
+                if (casTabAt(tab, i, null, new Node<K,V>(hash, key, value)))
+                    break;
+            }
+            else if ((fh = f.hash) == MOVED)
+                tab = helpTransfer(tab, f);
+            else if (onlyIfAbsent // check first node without acquiring lock
+                     && fh == hash
+                     && ((fk = f.key) == key || (fk != null && key.equals(fk)))
+                     && (fv = f.val) != null)
+                return fv;
+                        // (3)
+            else {
+                V oldVal = null;
+                synchronized (f) {
+                    if (tabAt(tab, i) == f) {
+                        if (fh >= 0) {
+                            binCount = 1;
+                            for (Node<K,V> e = f;; ++binCount) {
+                                K ek;
+                                                                // (4)
+                                if (e.hash == hash &&
+                                    ((ek = e.key) == key ||
+                                     (ek != null && key.equals(ek)))) {
+                                    oldVal = e.val;
+                                    if (!onlyIfAbsent)
+                                        e.val = value;
+                                    break;
+                                }
+                                Node<K,V> pred = e;
+                                                                // (5)
+                                if ((e = e.next) == null) {
+                                    pred.next = new Node<K,V>(hash, key, value);
+                                    break;
+                                }
+                            }
+                        }
+                                                // (6)
+                        else if (f instanceof TreeBin) {
+                            Node<K,V> p;
+                            binCount = 2;
+                            if ((p = ((TreeBin<K,V>)f).putTreeVal(hash, key,
+                                                           value)) != null) {
+                                oldVal = p.val;
+                                if (!onlyIfAbsent)
+                                    p.val = value;
+                            }
+                        }
+                        else if (f instanceof ReservationNode)
+                            throw new IllegalStateException("Recursive update");
+                    }
+                }
+                                ...
+            }
+        }
+                ...
+    }
+```
+
+#### 빈 해시 버킷에 노드를 삽입하는 경우
+(1) 새로운 노드를 삽입하기 위해, 해당 버킷 값(tabAt())을 가져와 비어 있는지 확인한다.
+```java
+static final <K,V> Node<K,V> tabAt(Node<K,V>[] tab, int i) {
+        return (Node<K,V>)U.getObjectAcquire(tab, ((long)i << ASHIFT) + ABASE);
+}
+```
+(2) 노드에 담겨 있는 volatile 변수에 접근하여 기존 값(null)과 비교한 후, 같으면 새로운 노드를 저장한다. 같지 않으면, for문으로 다시 돌아간다. 이 방식은 CAS 알고리즘이다.
+```java
+static final <K,V> boolean casTabAt(Node<K,V>[] tab, int i, Node<K,V> c, Node<K,V> v) {
+        return U.compareAndSetObject(tab, ((long)i << ASHIFT) + ABASE, c, v);
+}
+```
+- CAS 알고리즘을 사용하여 원자성과 가시성 문제를 해결하여 동시성을 보장한다.
+
+#### 해시 버킷에 이미 노드가 존재하는 경우
+(3) 이미 노드가 존재하는 경우에는 synchronized block을 사용하여 하나의 스레드만 접근하도록 제어한다. 이때, 비어있지 않은 Node<K, V> 타입의 해시 버킷에 잠금을 걸기 때문에 동일한 버킷에 접근하는 스레드는 Blocking 상태가 된다.  
+(4) 새로운 노드로 교체한다.  
+(5) 해시 충돌이 일어난 경우 Separate Chain에 추가한다.  
+(6) 해시 충돌이 일어난 경우 트리에 추가한다.  
+
+# 💡 정리
+### Vector, HashTable, Collections.SynchronziedXXX의 문제점은?
+- Vector, HashTable, SynchronziedXxx 클래스는 `synchronized` 메소드 또는 블록을 사용하며, 하나의 잠금 객체를 공유한다.
+- 따라서, 컬렉션에 하나의 스레드가 잠금을 획득하는 경우 다른 스레드들은 모든 메소드를 사용하지 못하고 Blocking 상태가 된다.
+- 이는 애플리케이션 성능 저하의 원인이 될 수 있다.
+
+### SynchronizedList와 CopyOnArrayList의 차이점은?
+- SynchronizedList는 읽기와 쓰기 동작시 인스턴스 자체에 잠금이 걸린다.
+- 그러나 CopyOnArrayList는 쓰기 동작시 해당 블록에 잠금을 걸고 원본 배열에 있는 요소를 복사하여 새로운 임시 배열을 만들고, 이 임시 배열에 쓰기 동작을 수행한 후 원본 배열을 갱신한다.
+- 덕분에 읽기 동작은 잠금이 걸리지 않아 SynchronizedList보다 읽기 성능이 좋다.
+- 그러나 쓰기 동작은 비용이 높은 배열 복사 작업을 하기 때문에 SynchronizedList보다 쓰기 성능이 떨어진다.
+- 따라서, 변경 작업보다 읽는 작업이 많을 경우 CopyOnArrayList를 사용하는 것이 더 효과적이다.
+
+### SynchronizedMap과 ConcurrentHashMap의 차이점은?
+- SynchronziedMap은 읽기와 쓰기 동작 시 인스턴스 자체에 잠금이 걸린다.
+- 그러나 ConcurrentHashMap은 각 테이블 버킷을 독립적으로 잠그는 방식을 사용한다.
+- 만약, 빈 버킷에 노드를 삽입할 경우 잠금(Lock) 대신 CAS 알고리즘을 사용하고, 그 외의 변경은 접근한 버킷에만 잠금이 걸려 스레드 경합을 최소화하며 동시성을 보장해준다.
