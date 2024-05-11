@@ -177,4 +177,29 @@ protected void doFilterInternal(@Nonnull HttpServletRequest request, @Nonnull Ht
 
 위 코드에서 JWT를 읽다가 토큰이 만료되거나, 변조된 토큰이거나 하는 등의 문제가 발생하면 `responseError` 처리를 하게 되는데,
 
-이 `responseError`는 다음 필터 체인을 호출하지 않고,
+`responseError`는 다음 filterChain을 호출하지 않고, 바로 에러를 응답한다.
+
+▶️ JwtAuthenticationFilter.responseError() 메서드
+```java
+private void responseError(HttpServletResponse response, ErrorCode errorCode) throws IOException {
+    response.setStatus(HttpStatus.UNAUTHORIZED.value());
+    response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+    response.setCharacterEncoding(StandardCharsets.UTF_8.displayName());
+    ErrorResponse errorResponse = ErrorResponse.of(errorCode);
+    objectMapper.writeValue(response.getWriter(), errorResponse);
+}
+```
+
+바로 이 부분에서 CORS 관련 응답헤더가 설정되지 않았던 것이다.😥
+
+# 💡 해결 & CORS 관련 헤더는 어디에서 설정하는 것이 좋을까?
+
+프론트엔드 개발자분 로컬환경에서는 저 부분에서도 CORS관련 설정을 가져와서 응답헤더에 set하도록 `JwtAuthenticationFilter`를 수정하여 해결했다.
+
+운영환경에서는 nginx를 사용하기 때문에 익숙한대로 nginx에 CORS 설정을 했었는데, 그 당시에는 익숙한 방식대로 설정했던 것 같다.
+
+프로젝트 초기에 다른 개발자 분이 "CORS설정을 스프링에서 하지 않고 nginx에서 하신 이유가 있나요?" 라고 질문하셨을 때 명쾌하게 답변을 하지 못했었다.
+
+이번 경우처럼 SpringSecurity에서 제공하는 `CorsFilter`를 사용하면 간단하게 CORS관련 설정을 할 수 있겠지만, `CorsFilter`까지 요청이 가지 않으면 무용지물이 된다.
+
+그래서 확실하게 CORS관련 설정을 하려면 nginx같이 애플리케이션에서 앞단에서 하는 것이 좋겠다는 생각을 하게 되었다. (애플리케이션에서는 어떤 일이 발생할지 모르기 때문에..)
