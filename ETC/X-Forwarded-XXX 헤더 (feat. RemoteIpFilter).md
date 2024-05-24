@@ -68,3 +68,127 @@ https://github.com/shin-je-woo 로 요청한 경우, `X-Forwarded-Host` 값은 �
 ```
 X-Forwarded-Host: https://github.com/shin-je-woo
 ```
+
+# 💡 RemoteIpFilter
+
+Tomcat에서는 `X-Forwarded-XXX` 헤더를 어떻게 해석하고 사용할까?
+
+톰캣에서는 `RemoteIpFilter` 라는 서블릿 필터에서 `X-Forwarded-XXX` 라는 헤더를 읽어와서 request 정보를 바꿔치기 한다.
+
+해당 설정은 톰캣의 server.xml 에 다음과 같이 `RemoteIpValve` 설정을 통해 값을 매칭시켜줘야 한다.
+
+▶️ RemoteIpValve 설정
+
+```
+<Valve className="org.apache.catalina.valves.RemoteIpValve"
+			  remoteIpHeader="x-forwarded-for"
+			  proxiesHeader="x-forwarded-by"
+			  protocolHeader="x-forwarded-proto" />
+```
+
+▶️ RemoteIpFilter
+
+```java
+package org.apache.catalina.filters;
+
+public class RemoteIpFilter extends GenericFilter {
+
+    //...
+    private String protocolHeader = "X-Forwarded-Proto";
+  
+    //...
+    public void doFilter(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
+            throws IOException, ServletException {
+
+        //... 
+        XForwardedRequest xRequest = new XForwardedRequest(request);
+        
+        //...
+        
+        if (protocolHeader != null) {
+            String protocolHeaderValue = request.getHeader(protocolHeader);
+            if (protocolHeaderValue == null) {
+                // Don't modify the secure, scheme and serverPort attributes
+                // of the request
+            } else if (isForwardedProtoHeaderValueSecure(protocolHeaderValue)) {
+                xRequest.setSecure(true);
+                xRequest.setScheme("https");
+                setPorts(xRequest, httpsServerPort);
+            } else {
+                xRequest.setSecure(false);
+                xRequest.setScheme("http");
+                setPorts(xRequest, httpServerPort);
+            }
+        }
+        
+        chain.doFilter(xRequest, response);
+        //...
+    }
+
+    private boolean isForwardedProtoHeaderValueSecure(String protocolHeaderValue) {
+        if (!protocolHeaderValue.contains(",")) {
+            return protocolHeaderHttpsValue.equalsIgnoreCase(protocolHeaderValue);
+        }
+        String[] forwardedProtocols = commaDelimitedListToStringArray(protocolHeaderValue);
+        if (forwardedProtocols.length == 0) {
+            return false;
+        }
+        for (String forwardedProtocol : forwardedProtocols) {
+            if (!protocolHeaderHttpsValue.equalsIgnoreCase(forwardedProtocol)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    //...
+}
+```
+
+`RemoteIpFilter` 에서는 `X-Forwarded-XXX` 헤더가 있을 경우(프록시나 로드밸런서에서 넘겨준 헤더겠죠?) XForwardedRequest라는 새로운 객체에 값을 담아둔다.
+
+이후, 다음 필터체인을 호출할 때 원본 `HttpServletRequest` 가 아닌 새로 세팅한 `XForwardedRequest`로 바꿔치기해서 넘겨주게 된다.
+
+그럼 이후에 호출되는 필터, 서블릿들에서는 (대표적으로 스프링에서는 DelegatingFilterProxy, DispatcherServlet) `X-Forwarded-XXX` 헤더가 해석된 `XForwardedRequest` 를 사용하게 된다.
+
+참고로, Spring Boot는 내장 톰캣을 사용하는데, 스프링 부트의 Auto Configuration 기능에 의해 위의 설정들이 기본적으로 세팅된다.
+
+▶️ 스프링 부트의 TomcatWebServerFactoryCustomizer
+
+```java
+package org.springframework.boot.autoconfigure.web.embedded;
+
+public class TomcatWebServerFactoryCustomizer
+		implements WebServerFactoryCustomizer<ConfigurableTomcatWebServerFactory>, Ordered {
+
+    //...
+
+    private void customizeRemoteIpValve(ConfigurableTomcatWebServerFactory factory) {
+        ServerProperties.Tomcat.Remoteip remoteIpProperties = this.serverProperties.getTomcat().getRemoteip();
+        String protocolHeader = remoteIpProperties.getProtocolHeader();
+        String remoteIpHeader = remoteIpProperties.getRemoteIpHeader();
+        // For back compatibility the valve is also enabled if protocol-header is set
+        if (StringUtils.hasText(protocolHeader) || StringUtils.hasText(remoteIpHeader)
+                || getOrDeduceUseForwardHeaders()) {
+            RemoteIpValve valve = new RemoteIpValve();
+            valve.setProtocolHeader(StringUtils.hasLength(protocolHeader) ? protocolHeader : "X-Forwarded-Proto");
+            if (StringUtils.hasLength(remoteIpHeader)) {
+                valve.setRemoteIpHeader(remoteIpHeader);
+            }
+            valve.setTrustedProxies(remoteIpProperties.getTrustedProxies());
+            // The internal proxies default to a list of "safe" internal IP addresses
+            valve.setInternalProxies(remoteIpProperties.getInternalProxies());
+            try {
+                valve.setHostHeader(remoteIpProperties.getHostHeader());
+            } catch (NoSuchMethodError ex) {
+                // Avoid failure with war deployments to Tomcat 8.5 before 8.5.44 and
+                // Tomcat 9 before 9.0.23
+            }
+            valve.setPortHeader(remoteIpProperties.getPortHeader());
+            valve.setProtocolHeaderHttpsValue(remoteIpProperties.getProtocolHeaderHttpsValue());
+            // ... so it's safe to add this valve by default.
+            factory.addEngineValves(valve);
+        }
+    }
+}
+```
