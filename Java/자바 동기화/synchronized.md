@@ -73,3 +73,32 @@ public static void syncMethod2() {
 - 모니터가 섞여 있기 때문에 동기화가 의도한대로 정확하게 동작하는지 주의가 필요하다.
 
 ![image](https://github.com/shin-je-woo/TIL/assets/39439576/d7167c82-1328-44a9-b96a-f0410a48a4ed)
+
+# 💡 synchronized 블록 동기화
+
+## 인스턴스 블록 동기화 (synchronized block)
+
+- 인스턴스 단위로 모니터가 동작하며 synchronized 가 적용된 곳은 하나의 락을 공유한다.
+- 모든 인스턴스가 모니터를 가지기 때문에 모니터를 여러 인스턴스로 구분해서 동기화를 구성할 수 있다.
+- 클래스의 인스턴스가 여러개일 경우 인스턴스별로 모니터 객체를 가지며 스레드는 모니터 별로 락을 획득해서 synchronized 영역을 진입하고 빠져 나올 때 락을 해제 할 수 있다.
+
+![image](https://github.com/shin-je-woo/TIL/assets/39439576/be54f509-b229-466e-83b1-b92694ab0d06)
+
+## 정적 블록 동기화 (static synchronized block)
+
+- 클래스 단위로 모니터가 동작하며 synchronized 가 적용된 곳은 하나의 락을 공유한다.
+- 모든 클래스가 모니터를 가지기 때문에 모니터를 여러 클래스로 구분해서 동기화를 구성할 수 있다.
+- 클래스 모니터가 여러개일 경우 스레드는 모니터 별로 락을 획득해서 synchronized 영역을 진입하고 빠져 나올 때 락을 해제 할 수 있다.
+
+![image](https://github.com/shin-je-woo/TIL/assets/39439576/10b5b41b-e0a4-4d4f-b1dc-cb8e7b76331f)
+
+## 인스턴스 블록 동기화 (synchronized block) + 정적 블록 동기화 (static synchronized block)
+
+- synchronized block 와 static synchronized block 가 혼용되었을 경우는 각 모니터별로 동기화를 진행한다.
+- 모니터가 섞여 있기 때문에 동기화가 의도한대로 정확하게 동작하는지 주의가 필요하다.
+
+![image](https://github.com/shin-je-woo/TIL/assets/39439576/8258f662-bbb3-4ecb-ba31-0cc65eb49c61)
+
+## 메서드 동기화 (synchronized method) + 블록 동기화 (synchronized block)
+
+![image](https://github.com/shin-je-woo/TIL/assets/39439576/355e831f-df57-4aab-9369-131f521b2b19)
