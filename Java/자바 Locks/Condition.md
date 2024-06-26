@@ -83,3 +83,19 @@
 - 모든 대기 중인 스레드를 깨우며 만약 어떤 스레드가 이 Condition 에 대해 대기 중이라면 모든 대기 중인 스레드가 깨어난다.
 - 각 스레드는 await 에서 반환되기 전에 락을 다시 얻어야 한다.
 - 메서드가 호출될 때 현재 스레드는 이 Condition 과 관련된 락을 보유하고 있어야 하며 그렇지 않은경우 IllegalMonitorStateException 예외가 발생한다.
+
+# 💡 Condition 기본 구현
+
+![image](https://github.com/shin-je-woo/TIL/assets/39439576/861e2065-54e0-4d30-96ad-f00c7c76d5eb)
+
+# 💡 signalAll() 보다 signal() 을 활용하라
+
+- Condition 에서 신호를 알릴 때 signalAll() 보다 signal()을 사용하는 것이 다중 조건을 다루는 더욱 효과적인 방법일 수 있다.
+- 한 개의 Lock 객체에서 생성한 여러 개의 Condition은 특정한 조건에 따라 스레드를 구분해서 관리함으로 미세한 제어를 가능하게 해준다.
+- 여러 개의 조건이 있을 때 모든 스레드를 동시에 깨우면 경쟁 상태가 발생할 수 있으나 Condition 을 여러 개 사용하면 각각의 조건에 대해 필요한 스레드만 깨울 수 있다.
+
+# 💡 Condition 사용 시 주의 사항
+
+- Condition 객체는 단순한 일반 객체로서 synchronized 문에서 대상으로 사용하거나, 자체 모니터 wait 및 notify 메서드를 호출할 수 있다.
+- Condition 객체의 모니터를 사용하는 것은 해당 Condition 과 연결된 Lock 을 사용하거나 await() 및 signal() 메서드를 사용하는 것과 특정한 관계가 없다.
+- 혼동을 피하기 위해 Condition 인스턴스를 이러한 방식으로 사용하지 않는 것이 좋다.
