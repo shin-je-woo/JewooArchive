@@ -104,3 +104,17 @@ public class CustomThreadPoolExecutor extends ThreadPoolExecutor {
     }
 }
 ```
+
+# 💡 ThreadPoolExecutor 생명 주기와 상태
+
+ThreadPoolExecutor 는 다양한 생명 주기와 상태를 가지며 이러한 상태에 따라 작업 스레드 풀의 동작이 결정된다. 주요 상태 및 상태 전환은 다음과 같다.
+
+![image](https://github.com/shin-je-woo/TIL/assets/39439576/7a3ddaa5-7289-4cf2-b95b-934192563ede)
+
+### 주요 API
+
+![image](https://github.com/shin-je-woo/TIL/assets/39439576/9347fa37-91b5-4e83-b9d1-fe1e28dc9af7)
+
+### ThreadPoolExecutor 흐름도
+
+![image](https://github.com/shin-je-woo/TIL/assets/39439576/6421fc8b-91df-41d2-9af7-5beb9f0e2ba1)
