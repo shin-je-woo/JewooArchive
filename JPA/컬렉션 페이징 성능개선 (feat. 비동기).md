@@ -145,6 +145,12 @@ public class ProjectReadAsyncService {
 }
 ```
 
+### 조회 쿼리 쓰레드 확인
+
+![image](https://github.com/shin-je-woo/TIL/assets/39439576/45c76117-6177-47eb-b17f-dd8f70e07a66)
+
+로그에 찍히는 조회 쿼리를 수행하는 쓰레드가 모두 다른 것을 확인할 수 있다.
+
 ## 성능 확인
 
 ![image](https://github.com/shin-je-woo/TIL/assets/39439576/5e33d0ae-878e-4868-b586-7d30c8baab7a)
@@ -175,9 +181,9 @@ public class ProjectReadAsyncService {
 
 ## DB 커넥션 풀
 
-비동기 멀티쓰레드로 조회쿼리를 구성할 경우 DB 조회작업이 한번에 몰리는 경우가 생길 수 있다.
+비동기 멀티쓰레드로 조회쿼리를 구성할 경우 동기방식보다 DB커넥션을 더 많이 이용하게 된다.
 
-이 경우 DB성능저하, 애플리케이션이 DB Connection을 대기하다가 timeout되는 경우가 생길 수 있다.
+만약, 조회요청이 몰리는 경우 DB성능저하, 애플리케이션이 DB Connection을 대기하다가 timeout되는 경우가 생길 수 있다.
 
 한번의 조회 Task에서 최대 연결될 DB Connection과 WAS로 들어오는 최대 요청수를 잘 고려하여 DB 커넥션 풀 사이즈를 조정할 필요가 있다.
 
