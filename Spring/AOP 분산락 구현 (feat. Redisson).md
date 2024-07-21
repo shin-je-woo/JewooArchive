@@ -114,9 +114,10 @@ public class DistributedLockAspect {
      */
     @Around("@annotation(com.whatpl.global.aop.annotation.DistributedLock)")
     public Object execute(final ProceedingJoinPoint joinPoint) throws Throwable {
-        DistributedLock distributedLock = getDistributedLock(joinPoint);
+        MethodSignature signature = CastUtils.cast(joinPoint.getSignature());
+        DistributedLock distributedLock = signature.getMethod().getAnnotation(DistributedLock.class);
 
-        String name = REDISSON_LOCK_PREFIX + distributedLock.name();
+        String name = REDISSON_LOCK_PREFIX + getSpELValue(signature.getParameterNames(), joinPoint.getArgs(), distributedLock.name());
         RLock lock = redissonClient.getLock(name);
 
         try {
@@ -141,9 +142,15 @@ public class DistributedLockAspect {
         }
     }
 
-    private DistributedLock getDistributedLock(ProceedingJoinPoint joinPoint) {
-        MethodSignature signature = CastUtils.cast(joinPoint.getSignature());
-        return signature.getMethod().getAnnotation(DistributedLock.class);
+    private Object getSpELValue(String[] parameterNames, Object[] args, String key) {
+        ExpressionParser parser = new SpelExpressionParser();
+        StandardEvaluationContext context = new StandardEvaluationContext();
+
+        for (int i = 0; i < parameterNames.length; i++) {
+            context.setVariable(parameterNames[i], args[i]);
+        }
+
+        return parser.parseExpression(key).getValue(context, Object.class);
     }
 }
 ```
@@ -202,6 +209,19 @@ public class AopTransaction {
 
 `Propagation.REQUIRES_NEW` 옵션은 기존 트랜잭션 여부와 상관 없이 항상 새로운 물리 트랜잭션을 만든다는 특징이 있다. (만약, 기존 트랜잭션이 존재한다면 기존 트랜잭션은 Pending 되어 커넥션 점유시간이 길어질 수 있다는 점을 주의해야 한다.)
 
+### ▶️ 분산락 AOP 적용 코드
+
+```java
+@Transactional
+@DistributedLock(name = "'project:'.concat(#projectId)")
+public void modifyProject(final Long projectId, final ProjectUpdateRequest request) {
+    Attachment representImage = getRepresentImage(request.getRepresentImageId());
+    Project project = projectRepository.findWithRecruitJobsById(projectId)
+            .orElseThrow(() -> new BizException(ErrorCode.NOT_FOUND_PROJECT));
+    project.modify(request, representImage);
+}
+```
+
 # 정리
 
 `@Transactional` 처럼 메서드에 `@Distributed` 애노테이션만 붙이면 분산락을 수행할 수 있게 되었다.
@@ -213,3 +233,4 @@ public class AopTransaction {
 - [재고시스템으로 알아보는 동시성이슈 해결방법](https://www.inflearn.com/course/%EB%8F%99%EC%8B%9C%EC%84%B1%EC%9D%B4%EC%8A%88-%EC%9E%AC%EA%B3%A0%EC%8B%9C%EC%8A%A4%ED%85%9C/dashboard)
 - [A Guide to Redis with Redisson](https://www.baeldung.com/redis-redisson)
 - [풀필먼트 입고 서비스팀에서 분산락을 사용하는 방법 - Spring Redisson](https://helloworld.kurly.com/blog/distributed-redisson-lock/)
+- [SpEL(Spring Expression Langauge) 사용법 + 어노테이션에 SpEL로 값 전달하기](https://devoong2.tistory.com/entry/SpELSpring-Expression-Langauge-%EC%82%AC%EC%9A%A9%EB%B2%95-%EC%96%B4%EB%85%B8%ED%85%8C%EC%9D%B4%EC%85%98%EC%97%90-SpEL%EB%A1%9C-%EB%B3%80%EC%88%98-%EC%A0%84%EB%8B%AC%ED%95%98%EA%B8%B0)
