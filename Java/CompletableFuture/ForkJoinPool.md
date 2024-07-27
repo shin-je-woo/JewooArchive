@@ -1,4 +1,4 @@
-![image](https://github.com/shin-je-woo/TIL/assets/39439576/092d28e7-b840-4157-b9d3-38751663672e)# Previous
+# Previous
 
 - ForkJoinPool 은 Java 에서 병렬 처리를 지원하는 스레드 풀로서 Java 7부터 도입 되었다.
 - ForkJoinPool 은 작업을 작은 조각으로 나누고 병렬로 처리하여 다중 코어 프로세서에서 효율적으로 작업을 수행할 수 있도록 도와준다.
