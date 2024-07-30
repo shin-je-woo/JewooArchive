@@ -4,7 +4,7 @@
 
 당시에 운영환경에서는 nginx가 애플리케이션 앞단에서 응답을 보낼 때 CORS 관련 헤더를 붙여서 나가게 되어 있어 프론트 개발자분 로컬에서 별도의 CORS 설정이 필요했다.
 
-스프링 시큐리티 문서를 찾아보니 역시나 CORS관련 필터를 제공하고 있었다. (완전 Good...😻) [CorsFilter](https://docs.spring.io/spring-security/reference/servlet/integrations/cors.html)
+스프링 시큐리티 문서를 찾아보니 역시나 CORS관련 필터를 제공하고 있었다. [CorsFilter](https://docs.spring.io/spring-security/reference/servlet/integrations/cors.html)
 
 그런데 문제는, `CorsFilter` 를 적용했음에도 프론트 개발자분 로컬환경에서 여전히 CORS관련 설정이 적용되지 않았다.
 
