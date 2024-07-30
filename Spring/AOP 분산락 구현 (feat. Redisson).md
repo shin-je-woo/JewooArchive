@@ -4,7 +4,11 @@
 
 사이드 프로젝트로 진행하고 있는 [Whatpl](https://github.com/whatpl/whatpl-backend) 에서도 발생했다.
 
-애플리케이션 시작 시 초기데이터를 insert하는 로직이 있는데, 애플리케이션 인스턴스가 동시에 2개 start될 때 중복데이터가 insert 되는 문제가 발생했다.
+Whatpl에서는 다음과 같은 상황이 발생할 수 있다.
+
+- 사용자가 모집글에 지원 요청을 하는 순간에 모집이 마감되는 경우
+- 프로젝트 등록자가 최대 모집인원을 수정하는 순간 지원 요청이 오는 경우
+- 등등 다양한 상황에서 동시성 이슈가 발생할 수 있다.
 
 동시성 문제는 이전에 TIL [동시성 문제 다루기](https://github.com/shin-je-woo/TIL/blob/main/ETC/%EB%8F%99%EC%8B%9C%EC%84%B1%20%EB%AC%B8%EC%A0%9C%20%EB%8B%A4%EB%A3%A8%EA%B8%B0.md) 에서도 다룬 바 있다.
 
