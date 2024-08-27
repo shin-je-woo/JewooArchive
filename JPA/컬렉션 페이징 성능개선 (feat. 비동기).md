@@ -135,12 +135,12 @@ public class ProjectReadAsyncService {
         return CompletableFuture.supplyAsync(() -> projectRepository.findProjectSkillMap(toProjectIds(projectInfos)), executor)
                 .thenAccept(skillMap -> projectInfos.forEach(projectInfo -> {
                     long projectId = projectInfo.getProjectId();
-                    projectInfo.setSkills(skillMap.get(projectId)
+                    List<Skill> skills = skillMap.get(projectId)
                             .stream()
-                            .map(ProjectSkill::getSkill).toList());
+                            .map(ProjectSkill::getSkill).toList();
+                    ProjectInfo.Editor.fromSkills(skills).merge(projectInfo);
                 }));
     }
-
     // ...
 }
 ```
